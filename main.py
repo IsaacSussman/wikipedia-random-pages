@@ -1,21 +1,35 @@
 from pydoc import doc
 import requests
 import bs4
-import numpy as np
 import wikipediaapi as wa
 import PySimpleGUI as sg
 import webbrowser
+from PIL import Image
+from io import BytesIO
 
 
-"""
+
 def getHeaderImage(text:str):
     soup = bs4.BeautifulSoup(text,"html.parser")
     print("Title of the website is : ")
-    iImage = soup.find("td",{"class":"infobox-image"})
-    if iImage != None:
-        iImage=iImage
-    print(iImage)
-"""
+    imageLink = soup.find("td",{"class":"infobox-image"})
+    for i in soup.find_all("td",{"class":"infobox-image"}):
+        for picture in i.find_all('img'):
+                imageLink= picture["src"]
+    
+    if imageLink != None:
+        try:
+            response = requests.get("https:"+imageLink)
+            imageResult=Image.open(BytesIO((response).content))
+            imageResult=imageResult
+        except:
+            imageResult=Image.open("No_image_available.svg.png")
+    else:
+        imageResult=Image.open("No_image_available.svg.png")
+    imageResult.show()
+    return imageResult
+        
+    
 
 
 
@@ -37,8 +51,8 @@ def getRandPage(wikiLang:str) -> wa.WikipediaPage:
     title = title[:title.find(" -")]
     page_py = wiki.page(title)
     print(page_py)
-    
-    return page_py
+    header = getHeaderImage(text)
+    return page_py,header
     
 
 
@@ -55,10 +69,13 @@ def main():
     #This is the ISO language code corresponding to the language you want
     language = "en"
 
-    page=getRandPage(language)
+    page,header=getRandPage(language)
 
     
-    layout=[[sg.Button("Different Article"),sg.Button("Full Page")],[sg.Text("Language:  "),sg.InputText("en",key="-LANGIN-"),sg.Button("Switch Language"),sg.Button("Language List")],[sg.Multiline(page.title+"\n\n\n"+page.summary,size=(300,200),key="-SUMMARY-")]]
+    layout=[[sg.Button("Different Article"),sg.Button("Full Page")],
+    [sg.Text("Language:  "),sg.InputText("en",key="-LANGIN-"),sg.Button("Switch Language"),sg.Button("Language List")],
+    [sg.Image(header)],
+    [sg.Multiline(page.title+"\n\n\n"+page.summary,size=(300,200),key="-SUMMARY-")]]
     # Create the Window
     window = sg.Window(page.title, layout, size=(1000,400))
     #    Event Loop to process "events" and get the "values" of the inputs
@@ -76,7 +93,7 @@ def main():
             webbrowser.open_new_tab(page.fullurl)
             
         if event == "Different Article":
-            page=getRandPage(language)
+            page,header=getRandPage(language)
             window["-SUMMARY-"].update(page.title+"\n\n\n"+page.summary)
 
         if event == "Language List":
